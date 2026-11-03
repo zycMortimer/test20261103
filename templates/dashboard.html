@@ -24,6 +24,8 @@
         <div id="dash-label" class="dash-label">{{ result.label if result else "" }}</div>
       </section>
       <p id="dash-error" class="storage-error" role="alert"{% if not error %} hidden{% endif %}>{{ error or "" }}</p>
+      <noscript><p class="storage-error">需要啟用 JavaScript 才能即時更新儀表板；請按「計算」送出表單。</p></noscript>
+      <p><a href="{{ url_for('index') }}">← 回到首頁</a></p>
       <ul class="dash-legend">
         {% for category in categories %}
           <li class="tone-{{ category.tone }}"><span aria-hidden="true">{{ category.icon }}</span> {{ category.label }} <small>{{ category.range }}</small></li>
@@ -31,6 +33,11 @@
       </ul>
     </main>
     <script>
+      window.addEventListener("error", () => {
+        const el = document.getElementById("dash-error");
+        if (el) { el.textContent = "儀表板載入發生錯誤，請重新整理頁面。"; el.hidden = false; }
+        console.error("BMI dashboard failed to load");
+      });
       const CATEGORIES = {{ categories_json | safe }};
       const H = {{ height_range | tojson }}, W = {{ weight_range | tojson }};
       const ERROR = "請輸入有效的身高（" + H[0] + "–" + H[1] + " 公分）與體重（" + W[0] + "–" + W[1] + " 公斤）。";
