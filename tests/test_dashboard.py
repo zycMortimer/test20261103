@@ -58,6 +58,22 @@ class DashboardPageTests(unittest.TestCase):
         self.assertIn(">--<", page)
         self.assertIn("請輸入有效的身高", page)
 
+    def test_home_links_to_dashboard(self):
+        page = self.client.get("/").get_data(as_text=True)
+        self.assertIn('href="/dashboard"', page)
+
+    def test_dashboard_renders_visible_with_assets_and_fallbacks(self):
+        page = self.client.get("/dashboard?height=170&weight=65").get_data(as_text=True)
+        self.assertIn('id="dash-gauge"', page)
+        self.assertIn(">22.5<", page)
+        self.assertIn("<noscript>", page)
+        self.assertIn('addEventListener("error"', page)
+        self.assertIn('href="/"', page)
+        css = self.client.get("/static/style.css")
+        self.assertEqual(css.status_code, 200)
+        css.close()
+        self.assertIn(".dash-gauge", self.client.get("/static/style.css").get_data(as_text=True))
+
 
 if __name__ == "__main__":
     unittest.main()
