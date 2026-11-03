@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>汽車 BMI 儀表板 · 好好生活</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body class="dash-body">
+    <main class="dash" aria-labelledby="dash-title">
+      <h1 id="dash-title">BMI 儀表板</h1>
+      <form class="dash-form" method="get" action="{{ url_for('dashboard') }}" novalidate>
+        <label>身高（公分）
+          <input id="dash-height" name="height" type="number" step="any" inputmode="decimal" value="{{ height_input }}">
+        </label>
+        <label>體重（公斤）
+          <input id="dash-weight" name="weight" type="number" step="any" inputmode="decimal" value="{{ weight_input }}">
+        </label>
+        <button type="submit">計算</button>
+      </form>
+      <section id="dash-gauge" class="dash-gauge{% if result %} tone-{{ result.tone }}{% endif %}" aria-live="polite">
+        <div id="dash-icon" class="dash-icon" aria-hidden="true">{{ result.icon if result else "" }}</div>
+        <div id="dash-bmi" class="dash-bmi">{{ result.bmi if result else "--" }}</div>
+        <div id="dash-label" class="dash-label">{{ result.label if result else "" }}</div>
+      </section>
+      <p id="dash-error" class="storage-error" role="alert"{% if not error %} hidden{% endif %}>{{ error or "" }}</p>
+      <ul class="dash-legend">
+        {% for category in categories %}
+          <li class="tone-{{ category.tone }}"><span aria-hidden="true">{{ category.icon }}</span> {{ category.label }} <small>{{ category.range }}</small></li>
+        {% endfor %}
+      </ul>
+    </main>
+    <script>
+      const CATEGORIES = {{ categories_json | safe }};
+      const H = {{ height_range | tojson }}, W = {{ weight_range | tojson }};
+      const ERROR = "請輸入有效的身高（" + H[0] + "–" + H[1] + " 公分）與體重（" + W[0] + "–" + W[1] + " 公斤）。";
+      const $ = (id) => document.getElementById(id);
+      function update() {
+        const h = parseFloat($("dash-height").value), w = parseFloat($("dash-weight").value);
+        const blank = $("dash-height").value === "" && $("dash-weight").value === "";
+        const ok = h >= H[0] && h <= H[1] && w >= W[0] && w <= W[1];
+        const gauge = $("dash-gauge");
+        gauge.className = "dash-gauge";
+        if (!ok) {
+          $("dash-bmi").textContent = "--"; $("dash-label").textContent = ""; $("dash-icon").textContent = "";
+          $("dash-error").textContent = ERROR; $("dash-error").hidden = blank;
+          return;
+        }
+        const bmi = Math.round((w / ((h / 100) ** 2)) * 10 + Number.EPSILON) / 10;
+        const c = CATEGORIES.find((x) => x.upper !== null && bmi < x.upper) || CATEGORIES[CATEGORIES.length - 1];
+        gauge.classList.add("tone-" + c.tone);
+        $("dash-bmi").textContent = bmi.toFixed(1); $("dash-label").textContent = c.label;
+        $("dash-icon").textContent = c.icon; $("dash-error").hidden = true;
+      }
+      $("dash-height").addEventListener("input", update);
+      $("dash-weight").addEventListener("input", update);
+    </script>
+  </body>
+</html>
