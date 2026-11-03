@@ -1,7 +1,55 @@
 import unittest
 
-from app import app
-from dashboard import calculate_bmi, classify_bmi
+from app import app, calculate_bmi, classify_bmi, gauge_angle, gauge_segments, gauge_state
+
+
+class GaugeTests(unittest.TestCase):
+    def setUp(self):
+        self.client = app.test_client()
+
+    def test_renders_semicircle_in_calculator_page(self):
+        page = self.client.get("/").get_data(as_text=True)
+        self.assertIn('id="bmi-gauge"', page)
+        self.assertIn('id="gauge-needle"', page)
+        self.assertIn(">--<", page)
+        self.assertEqual(page.count('class="gauge-seg seg-'), 6)
+        self.assertIn(".bmi-gauge", self.client.get("/static/style.css").get_data(as_text=True))
+
+    def test_segments_cover_six_categories(self):
+        self.assertEqual(
+            [s["label"] for s in gauge_segments()],
+            ["過輕", "正常", "過重", "輕度肥胖", "中度肥胖", "重度肥胖"],
+        )
+
+    def test_boundary_values(self):
+        for bmi, label in ((18.5, "正常"), (24, "過重"), (27, "輕度肥胖"), (30, "中度肥胖"), (35, "重度肥胖")):
+            with self.subTest(bmi=bmi):
+                state = gauge_state(bmi)
+                self.assertEqual(state["label"], label)
+                self.assertEqual(state["angle"], gauge_angle(bmi))
+        self.assertEqual(gauge_angle(10), 0)
+        self.assertEqual(gauge_angle(40), 180)
+        self.assertEqual(gauge_angle(99), 180)
+
+    def test_invalid_resets_gauge(self):
+        state = gauge_state(None)
+        self.assertEqual((state["bmi"], state["angle"]), ("--", 0))
+
+    def test_saved_record_shows_matching_bmi_on_gauge(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            app.config["DATA_DIR"] = directory
+            try:
+                response = self.client.post(
+                    "/", data={"name": "A", "height": "170", "weight": "65", "action": "calculate"},
+                    follow_redirects=True,
+                )
+            finally:
+                app.config["DATA_DIR"] = str(__import__("pathlib").Path(app.root_path) / "data")
+        page = response.get_data(as_text=True)
+        self.assertIn('id="gauge-bmi" class="gauge-bmi">22.5<', page)
+        self.assertIn("rotate(75.0deg)", page)
+        self.assertIn("gauge-normal", page)
 
 
 class ClassifyBmiTests(unittest.TestCase):

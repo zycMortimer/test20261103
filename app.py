@@ -8,10 +8,107 @@ from uuid import UUID, uuid4
 
 from flask import Flask, redirect, render_template, request, url_for
 
-from dashboard import (
-    HEIGHT_RANGE_CM, WEIGHT_RANGE_KG, calculate_bmi, categories_json, category_table,
-    classify_bmi,
+HEIGHT_RANGE_CM = (50, 250)
+WEIGHT_RANGE_KG = (10, 500)
+
+# (exclusive upper bound, label, tone, icon); evaluated in order on the rounded BMI.
+BMI_CATEGORIES = (
+    (18.5, "過輕", "underweight", "▽"),
+    (24, "正常", "normal", "✓"),
+    (27, "過重", "overweight", "△"),
+    (30, "輕度肥胖", "obese-1", "▲"),
+    (35, "中度肥胖", "obese-2", "⚠"),
+    (float("inf"), "重度肥胖", "obese-3", "⛔"),
 )
+
+
+def _number(value):
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def calculate_bmi(height_cm, weight_kg):
+    """Return BMI rounded to one decimal, or None when inputs are invalid."""
+    height = _number(height_cm)
+    weight = _number(weight_kg)
+    if height is None or weight is None:
+        return None
+    if not HEIGHT_RANGE_CM[0] <= height <= HEIGHT_RANGE_CM[1]:
+        return None
+    if not WEIGHT_RANGE_KG[0] <= weight <= WEIGHT_RANGE_KG[1]:
+        return None
+    return round(weight / (height / 100) ** 2, 1)
+
+
+def classify_bmi(bmi):
+    for upper, label, tone, icon in BMI_CATEGORIES:
+        if bmi < upper:
+            return {"label": label, "tone": tone, "icon": icon}
+    raise ValueError("BMI must be a number")
+
+
+def category_table():
+    rows, lower = [], None
+    for upper, label, tone, icon in BMI_CATEGORIES:
+        if lower is None:
+            text = f"< {upper:g}"
+        elif upper == float("inf"):
+            text = f"≥ {lower:g}"
+        else:
+            text = f"{lower:g} – {upper:g}"
+        rows.append({"label": label, "tone": tone, "icon": icon, "upper": upper, "range": text})
+        lower = upper
+    return rows
+
+
+def categories_json(rows):
+    # JSON has no Infinity; the page script treats a null bound as the last category.
+    safe = [{**row, "upper": None if row["upper"] == float("inf") else row["upper"]} for row in rows]
+    return json.dumps(safe, ensure_ascii=False).replace("<", "\\u003c")
+
+
+GAUGE_MIN, GAUGE_MAX = 10, 40
+GAUGE_CENTER, GAUGE_RADIUS = 100, 80
+
+
+def _gauge_point(bmi):
+    angle = math.pi * (1 - (min(max(bmi, GAUGE_MIN), GAUGE_MAX) - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN))
+    return (
+        round(GAUGE_CENTER + GAUGE_RADIUS * math.cos(angle), 2),
+        round(GAUGE_CENTER - GAUGE_RADIUS * math.sin(angle), 2),
+    )
+
+
+def gauge_segments():
+    """SVG arc paths for each BMI category on a 10–40 semicircular scale."""
+    segments, lower = [], GAUGE_MIN
+    for upper, label, tone, _icon in BMI_CATEGORIES:
+        end = min(upper, GAUGE_MAX)
+        (x1, y1), (x2, y2) = _gauge_point(lower), _gauge_point(end)
+        segments.append({
+            "tone": tone, "label": label,
+            "path": f"M {x1} {y1} A {GAUGE_RADIUS} {GAUGE_RADIUS} 0 0 1 {x2} {y2}",
+        })
+        lower = end
+    return segments
+
+
+def gauge_angle(bmi):
+    """Needle rotation in degrees: 0 points at the left end, 180 at the right end."""
+    if bmi is None:
+        return 0
+    clamped = min(max(bmi, GAUGE_MIN), GAUGE_MAX)
+    return round((clamped - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN) * 180, 1)
+
+
+def gauge_state(bmi):
+    if bmi is None:
+        return {"bmi": "--", "label": "", "tone": "", "angle": 0}
+    return {"bmi": f"{bmi:.1f}", "angle": gauge_angle(bmi), **classify_bmi(bmi)}
+
 
 app = Flask(__name__)
 app.config["DATA_DIR"] = os.environ.get("BMI_DATA_DIR", str(Path(app.root_path) / "data"))
@@ -131,6 +228,21 @@ def load_records():
 
 def load_history(name):
     return [record for record in load_records() if record["name"] == name]
+
+
+@app.context_processor
+def gauge_context():
+    rows = category_table()
+    return {
+        "gauge_segments": gauge_segments(),
+        "gauge_categories_json": categories_json(rows),
+        "gauge_state": lambda result: gauge_state(float(result["bmi"]) if result else None),
+        "gauge_min": GAUGE_MIN,
+        "gauge_max": GAUGE_MAX,
+        "height_range": HEIGHT_RANGE_CM,
+        "weight_range": WEIGHT_RANGE_KG,
+        "categories": rows,
+    }
 
 
 @app.get("/users")
