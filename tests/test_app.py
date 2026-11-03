@@ -126,6 +126,28 @@ class BmiAppTests(unittest.TestCase):
         self.assertIn("健康體位", page)
         self.assertIn("維持均衡飲食", page)
 
+    def test_gauge_between_bmi_number_and_category(self):
+        page = self.calculate().get_data(as_text=True)
+        number = page.index('class="result-number')
+        gauge = page.index('class="bmi-gauge"')
+        label = page.index("你的體位屬於")
+        self.assertLess(number, gauge)
+        self.assertLess(gauge, label)
+        self.assertEqual(page.count("gauge-arc"), 4)
+
+    def test_gauge_absent_without_result(self):
+        page = self.calculate(height="0", weight="60").get_data(as_text=True)
+        self.assertNotIn("bmi-gauge", page)
+
+    def test_gauge_angle_clamps_and_boundaries(self):
+        from app import gauge_angle
+        self.assertEqual(gauge_angle(5), -90)
+        self.assertEqual(gauge_angle(10), -90)
+        self.assertEqual(gauge_angle(25), 0)
+        self.assertEqual(gauge_angle(60), 90)
+        for bmi in (18.5, 24, 27, 30, 35):
+            self.assertTrue(-90 < gauge_angle(bmi) < 90)
+
     def test_health_tips_and_sources_for_each_category(self):
         for bmi, category in [
             (18.4, "體重過輕"),

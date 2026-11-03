@@ -70,6 +70,37 @@ def bmi_guidance(bmi):
     }
 
 
+GAUGE_MIN, GAUGE_MAX = 10.0, 40.0
+GAUGE_SEGMENTS = (
+    (GAUGE_MIN, 18.5, "low", "體重過輕"),
+    (18.5, 24, "healthy", "健康體位"),
+    (24, 27, "high", "體重過重"),
+    (27, GAUGE_MAX, "obese", "肥胖"),
+)
+
+
+def gauge_angle(bmi):
+    clamped = min(max(float(bmi), GAUGE_MIN), GAUGE_MAX)
+    return round((clamped - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN) * 180 - 90, 1)
+
+
+def gauge_point(bmi, radius):
+    theta = math.radians(180 - (bmi - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN) * 180)
+    return round(100 + radius * math.cos(theta), 2), round(100 - radius * math.sin(theta), 2)
+
+
+def gauge_segments():
+    segments = []
+    for start, end, tone, label in GAUGE_SEGMENTS:
+        x1, y1 = gauge_point(start, 80)
+        x2, y2 = gauge_point(end, 80)
+        segments.append({"d": f"M {x1} {y1} A 80 80 0 0 1 {x2} {y2}", "tone": tone, "label": label})
+    return segments
+
+
+app.jinja_env.globals.update(gauge_angle=gauge_angle, gauge_segments=gauge_segments)
+
+
 def parse_positive_number(value):
     try:
         number = float(value)

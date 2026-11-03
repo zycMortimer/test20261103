@@ -67,6 +67,15 @@ button span { font-size: 20px; font-weight: 400; }
 .result-number { font-size: clamp(70px, 8vw, 110px); font-weight: 700; line-height: 1.1; letter-spacing: -.085em; }
 .result-unit { color: #728a77; font-size: 13px; font-weight: 700; letter-spacing: .1em; }
 .result-divider { position: relative; z-index: 1; height: 1px; margin: 22px 0 25px; background: #b6cfb5; }
+.bmi-gauge { position: relative; z-index: 1; max-width: 260px; margin-top: 22px; }
+.bmi-gauge svg { display: block; width: 100%; height: auto; }
+.gauge-arc { fill: none; stroke-width: 16; }
+.gauge-low { stroke: #6fa8dc; }
+.gauge-healthy { stroke: #6aa56f; }
+.gauge-high { stroke: #e0b24a; }
+.gauge-obese { stroke: #d96b5b; }
+.gauge-needle line { stroke: #24352f; stroke-width: 3; stroke-linecap: round; }
+.gauge-hub { fill: #24352f; }
 .result-label { position: relative; z-index: 1; color: #5c735e; font-size: 14px; }
 .result-label strong { margin-left: 5px; color: #234f37; font-size: 18px; }
 .result-panel h2 { position: relative; z-index: 1; margin: 31px 0 10px; font-size: 17px; }

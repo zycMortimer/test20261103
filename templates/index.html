@@ -75,6 +75,17 @@
                   <span class="result-number{% if result.label == '肥胖' %} bmi-obese{% endif %}">{{ result.bmi }}</span>
                   <span class="result-unit">BMI</span>
                 </div>
+                <div class="bmi-gauge" role="img" aria-label="BMI {{ result.bmi }}，{{ result.label }}">
+                  <svg viewBox="0 0 200 112" aria-hidden="true" focusable="false">
+                    {% for segment in gauge_segments() %}
+                      <path class="gauge-arc gauge-{{ segment.tone }}" d="{{ segment.d }}"></path>
+                    {% endfor %}
+                    <g class="gauge-needle" transform="rotate({{ gauge_angle(result.bmi) }} 100 100)">
+                      <line x1="100" y1="100" x2="100" y2="30"></line>
+                    </g>
+                    <circle class="gauge-hub" cx="100" cy="100" r="6"></circle>
+                  </svg>
+                </div>
                 <div class="result-divider"></div>
                 <span class="result-label">你的體位屬於 <strong>{{ result.label }}</strong></span>
                 <h2 id="result-title">給你的健康建議</h2>
