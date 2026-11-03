@@ -8,6 +8,11 @@ from uuid import UUID, uuid4
 
 from flask import Flask, redirect, render_template, request, url_for
 
+from dashboard import (
+    HEIGHT_RANGE_CM, WEIGHT_RANGE_KG, calculate_bmi, categories_json, category_table,
+    classify_bmi,
+)
+
 app = Flask(__name__)
 app.config["DATA_DIR"] = os.environ.get("BMI_DATA_DIR", str(Path(app.root_path) / "data"))
 DISPLAY_TIMEZONE = timezone(timedelta(hours=8))
@@ -145,6 +150,28 @@ def users():
         users=[latest_records[name] for name in sorted(latest_records)],
         storage_error=storage_error,
     ), status
+
+
+@app.get("/dashboard")
+def dashboard():
+    height_input = request.args.get("height", "").strip()
+    weight_input = request.args.get("weight", "").strip()
+    result = error = None
+    if height_input or weight_input:
+        bmi = calculate_bmi(height_input, weight_input)
+        if bmi is None:
+            error = (
+                f"請輸入有效的身高（{HEIGHT_RANGE_CM[0]}–{HEIGHT_RANGE_CM[1]} 公分）"
+                f"與體重（{WEIGHT_RANGE_KG[0]}–{WEIGHT_RANGE_KG[1]} 公斤）。"
+            )
+        else:
+            result = {"bmi": f"{bmi:.1f}", **classify_bmi(bmi)}
+    rows = category_table()
+    return render_template(
+        "dashboard.html", height_input=height_input, weight_input=weight_input,
+        result=result, error=error, categories=rows, categories_json=categories_json(rows),
+        height_range=HEIGHT_RANGE_CM, weight_range=WEIGHT_RANGE_KG,
+    ), (400 if error else 200)
 
 
 def save_record(name, height, weight, bmi):
