@@ -1,7 +1,7 @@
 import unittest
 
 from app import app
-from dashboard import calculate_bmi, classify_bmi
+from dashboard import calculate_bmi, category_table, classify_bmi
 
 
 class ClassifyBmiTests(unittest.TestCase):
@@ -24,6 +24,17 @@ class CalculateBmiTests(unittest.TestCase):
     def test_rounding(self):
         self.assertEqual(calculate_bmi("170", "65"), 22.5)
         self.assertEqual(calculate_bmi(160, 60), 23.4)
+
+    def test_midpoint_rounding_uses_half_up(self):
+        for height, weight, expected in (
+            (200, 73.8, 18.5),
+            (100, 23.95, 24.0),
+            (100, 26.95, 27.0),
+            (100, 29.95, 30.0),
+            (100, 34.95, 35.0),
+        ):
+            with self.subTest(height=height, weight=weight):
+                self.assertEqual(calculate_bmi(height, weight), expected)
 
     def test_invalid_inputs(self):
         for height, weight in (
@@ -57,6 +68,18 @@ class DashboardPageTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn(">--<", page)
         self.assertIn("請輸入有效的身高", page)
+
+    def test_empty_submitted_values_are_invalid(self):
+        response = self.client.get("/dashboard?height=&weight=")
+        page = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("請輸入有效的身高", page)
+
+    def test_category_ranges_show_inclusive_last_tenth(self):
+        self.assertEqual(
+            [row["range"] for row in category_table()],
+            ["< 18.5", "18.5 – 23.9", "24 – 26.9", "27 – 29.9", "30 – 34.9", "≥ 35"],
+        )
 
 
 if __name__ == "__main__":

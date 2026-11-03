@@ -157,7 +157,7 @@ def dashboard():
     height_input = request.args.get("height", "").strip()
     weight_input = request.args.get("weight", "").strip()
     result = error = None
-    if height_input or weight_input:
+    if "height" in request.args or "weight" in request.args:
         bmi = calculate_bmi(height_input, weight_input)
         if bmi is None:
             error = (

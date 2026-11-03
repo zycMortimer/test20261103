@@ -37,13 +37,12 @@
       const $ = (id) => document.getElementById(id);
       function update() {
         const h = parseFloat($("dash-height").value), w = parseFloat($("dash-weight").value);
-        const blank = $("dash-height").value === "" && $("dash-weight").value === "";
         const ok = h >= H[0] && h <= H[1] && w >= W[0] && w <= W[1];
         const gauge = $("dash-gauge");
         gauge.className = "dash-gauge";
         if (!ok) {
           $("dash-bmi").textContent = "--"; $("dash-label").textContent = ""; $("dash-icon").textContent = "";
-          $("dash-error").textContent = ERROR; $("dash-error").hidden = blank;
+          $("dash-error").textContent = ERROR; $("dash-error").hidden = false;
           return;
         }
         const bmi = Math.round((w / ((h / 100) ** 2)) * 10 + Number.EPSILON) / 10;

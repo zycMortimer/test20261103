@@ -33,7 +33,8 @@ def calculate_bmi(height_cm, weight_kg):
         return None
     if not WEIGHT_RANGE_KG[0] <= weight <= WEIGHT_RANGE_KG[1]:
         return None
-    return round(weight / (height / 100) ** 2, 1)
+    bmi = weight / (height / 100) ** 2
+    return math.floor(bmi * 10 + 0.5) / 10
 
 
 def classify_bmi(bmi):
@@ -51,7 +52,7 @@ def category_table():
         elif upper == float("inf"):
             text = f"≥ {lower:g}"
         else:
-            text = f"{lower:g} – {upper:g}"
+            text = f"{lower:g} – {upper - 0.1:g}"
         rows.append({"label": label, "tone": tone, "icon": icon, "upper": upper, "range": text})
         lower = upper
     return rows
