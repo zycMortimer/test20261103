@@ -6,6 +6,23 @@
   const H = gauge.dataset.height.split(",").map(Number);
   const W = gauge.dataset.weight.split(",").map(Number);
   const CATEGORIES = JSON.parse(gauge.dataset.categories);
+  const roundBuffer = new ArrayBuffer(8), roundView = new DataView(roundBuffer);
+
+  function roundBmi(value) {
+    roundView.setFloat64(0, value);
+    const bits = roundView.getBigUint64(0);
+    const exponent = Number((bits >> 52n) & 0x7ffn);
+    const fraction = bits & ((1n << 52n) - 1n);
+    const significand = exponent === 0 ? fraction : (1n << 52n) | fraction;
+    const binaryExponent = (exponent === 0 ? 1 - 1023 : exponent - 1023) - 52;
+    let numerator = significand * 10n, denominator = 1n;
+    if (binaryExponent >= 0) numerator <<= BigInt(binaryExponent);
+    else denominator <<= BigInt(-binaryExponent);
+    let rounded = numerator / denominator;
+    const remainder = numerator % denominator;
+    if (remainder * 2n > denominator || (remainder * 2n === denominator && rounded % 2n === 1n)) rounded++;
+    return Number(rounded) / 10;
+  }
 
   function update() {
     const h = parseFloat(height.value), w = parseFloat(weight.value);
@@ -19,7 +36,8 @@
       $("gauge-error").hidden = blank;
       return;
     }
-    const bmi = Math.round((w / ((h / 100) ** 2)) * 10 + Number.EPSILON) / 10;
+    const meters = h / 100;
+    const bmi = roundBmi(w / (meters * meters));
     const c = CATEGORIES.find((x) => x.upper !== null && bmi < x.upper) || CATEGORIES[CATEGORIES.length - 1];
     const clamped = Math.min(Math.max(bmi, MIN), MAX);
     gauge.classList.add("gauge-" + c.tone);
@@ -30,4 +48,5 @@
   }
   height.addEventListener("input", update);
   weight.addEventListener("input", update);
+  update();
 })();

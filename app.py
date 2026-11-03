@@ -110,6 +110,12 @@ def gauge_state(bmi):
     return {"bmi": f"{bmi:.1f}", "angle": gauge_angle(bmi), **classify_bmi(bmi)}
 
 
+def initial_gauge_state(result, height, weight):
+    if calculate_bmi(height, weight) is None:
+        return {**gauge_state(None), "error": bool(height or weight)}
+    return {**gauge_state(float(result["bmi"]) if result else None), "error": False}
+
+
 app = Flask(__name__)
 app.config["DATA_DIR"] = os.environ.get("BMI_DATA_DIR", str(Path(app.root_path) / "data"))
 DISPLAY_TIMEZONE = timezone(timedelta(hours=8))
@@ -236,7 +242,7 @@ def gauge_context():
     return {
         "gauge_segments": gauge_segments(),
         "gauge_categories_json": categories_json(rows),
-        "gauge_state": lambda result: gauge_state(float(result["bmi"]) if result else None),
+        "gauge_state": initial_gauge_state,
         "gauge_min": GAUGE_MIN,
         "gauge_max": GAUGE_MAX,
         "height_range": HEIGHT_RANGE_CM,
