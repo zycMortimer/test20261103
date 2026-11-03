@@ -1,0 +1,21 @@
+{% set g = gauge_state(result, height_input, weight_input) %}
+<section id="bmi-gauge" class="bmi-gauge{% if g.tone %} gauge-{{ g.tone }}{% endif %}" data-min="{{ gauge_min }}" data-max="{{ gauge_max }}" data-height="{{ height_range|join(",") }}" data-weight="{{ weight_range|join(",") }}" data-categories="{{ gauge_categories_json }}" aria-label="BMI 半圓形儀表板">
+  <svg class="gauge-svg" viewBox="0 0 200 118" role="img" aria-labelledby="gauge-title">
+    <title id="gauge-title">BMI 半圓形儀表板（{{ gauge_min }}–{{ gauge_max }}）</title>
+    {% for segment in gauge_segments %}
+      <path class="gauge-seg seg-{{ segment.tone }}" d="{{ segment.path }}"><title>{{ segment.label }}</title></path>
+    {% endfor %}
+    <g id="gauge-needle" class="gauge-needle" style="transform: rotate({{ g.angle }}deg)">
+      <line x1="100" y1="100" x2="34" y2="100"></line>
+      <circle cx="100" cy="100" r="6"></circle>
+    </g>
+    <text class="gauge-end" x="20" y="116" text-anchor="middle">{{ gauge_min }}</text>
+    <text class="gauge-end" x="180" y="116" text-anchor="middle">{{ gauge_max }}+</text>
+  </svg>
+  <div class="gauge-readout" aria-live="polite">
+    <span id="gauge-bmi" class="gauge-bmi">{{ g.bmi }}</span>
+    <span id="gauge-label" class="gauge-label">{{ g.label }}</span>
+  </div>
+  <p id="gauge-error" class="field-error" role="alert"{% if not g.error %} hidden{% endif %}>請輸入有效的身高（{{ height_range[0] }}–{{ height_range[1] }} 公分）與體重（{{ weight_range[0] }}–{{ weight_range[1] }} 公斤）。</p>
+</section>
+<script src="{{ url_for('static', filename='gauge.js') }}" defer></script>
